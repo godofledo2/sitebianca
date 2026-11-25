@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><script src="https://myhub.ia.br/canvas-vendor/tailwind.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nosso calendário — registros do ano</title>
+  <style>
+    :root {
+      --ink: #302b38;
+      --muted: #777180;
+      --line: #eee9f1;
+      --paper: #ffffff;
+      --bg: #f8f6fa;
+      --purple: #7655c7;
+      --purple-dark: #5c3eb0;
+      --purple-soft: #f0ebfa;
+      --pink: #f9e9ef;
+      --green: #267459;
+      --shadow: 0 12px 36px rgba(45, 31, 66, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button { font: inherit; }
+    .app { max-width: 1120px; margin: 0 auto; padding: 28px 20px 44px; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; }
+    .brand { display:flex; gap:12px; align-items:center; }
+    .brand-mark {
+      width:44px; height:44px; display:grid; place-items:center; border-radius:15px;
+      background:var(--purple-soft); font-size:23px;
+    }
+    h1 { font-size:clamp(20px, 4vw, 27px); line-height:1.15; margin:0; letter-spacing:-.04em; }
+    .subtitle { margin:5px 0 0; color:var(--muted); font-size:13px; }
+    .year-pill { color:var(--purple-dark); background:var(--purple-soft); padding:9px 13px; border-radius:999px; font-weight:700; font-size:13px; }
+    .dashboard { display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:14px; margin-bottom:18px; }
+    .stat {
+      background:var(--paper); border:1px solid var(--line); border-radius:20px; padding:18px 20px;
+      box-shadow:var(--shadow); min-height:116px;
+    }
+    .stat.primary { background:linear-gradient(135deg, #7655c7, #9175df); color:white; border:0; }
+    .stat-label { font-size:13px; opacity:.78; margin-bottom:10px; }
+    .stat-number { font-size:36px; line-height:1; font-weight:800; letter-spacing:-.05em; }
+    .stat-note { font-size:12px; opacity:.78; margin-top:8px; }
+    .layout { display:grid; grid-template-columns:minmax(0, 1.35fr) minmax(290px, .75fr); gap:18px; align-items:start; }
+    .card { background:var(--paper); border:1px solid var(--line); border-radius:22px; box-shadow:var(--shadow); }
+    .calendar-card { padding:21px; }
+    .calendar-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }
+    .month-title { font-size:19px; font-weight:750; text-transform:capitalize; letter-spacing:-.03em; }
+    .month-controls { display:flex; align-items:center; gap:8px; }
+    .icon-btn, .today-btn {
+      border:1px solid var(--line); background:white; color:var(--ink); border-radius:11px; cursor:pointer;
+      height:38px; min-width:38px; display:grid; place-items:center;
+    }
+    .icon-btn:hover, .today-btn:hover { background:var(--purple-soft); }
+    .today-btn { padding:0 12px; font-size:12px; font-weight:700; }
+    .weekdays, .calendar-grid { display:grid; grid-template-columns:repeat(7, 1fr); }
+    .weekdays { margin-bottom:7px; }
+    .weekday { text-align:center; color:var(--muted); font-size:11px; font-weight:700; padding:8px 0; }
+    .day {
+      position:relative; min-height:66px; border:1px solid transparent; background:transparent; border-radius:14px;
+      cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+      color:var(--ink); margin:2px; transition:.15s ease;
+    }
+    .day:hover { background:#f7f3fc; }
+    .day.outside { color:#c6c1ca; }
+    .day.selected { background:var(--purple-soft); border-color:#d9cdf4; color:var(--purple-dark); font-weight:800; }
+    .day.today .day-number { outline:1px solid var(--purple); outline-offset:4px; border-radius:50%; }
+    .day-number { display:grid; place-items:center; width:25px; height:25px; font-size:13px; }
+    .day-photo { width:7px; height:7px; border-radius:99px; background:#dc7898; }
+    .calendar-hint { margin:12px 2px 0; color:var(--muted); font-size:12px; }
+    .side-card { padding:20px; }
+    .side-title { margin:0 0 5px; font-size:18px; letter-spacing:-.03em; }
+    .selected-date { color:var(--muted); font-size:13px; margin:0 0 16px; }
+    .preview {
+      width:100%; min-height:180px; border:1px dashed #dcd5e5; background:#faf9fc; border-radius:17px;
+      display:grid; place-items:center; overflow:hidden; margin-bottom:14px;
+    }
+    .preview.empty { color:var(--muted); text-align:center; padding:22px; }
+    .preview img { display:block; width:100%; max-height:300px; object-fit:cover; cursor:zoom-in; }
+    .empty-icon { font-size:27px; margin-bottom:8px; }
+    .actions { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+    .action-btn {
+      min-height:44px; border:0; border-radius:12px; cursor:pointer; font-size:13px; font-weight:750;
+      padding:10px 12px; transition:.15s ease;
+    }
+    .action-btn.primary { background:var(--purple); color:white; }
+    .action-btn.primary:hover { background:var(--purple-dark); }
+    .action-btn.secondary { background:var(--purple-soft); color:var(--purple-dark); }
+    .action-btn.secondary:hover { background:#e7def8; }
+    .action-btn.remove { color:#a13e5d; background:var(--pink); }
+    .action-btn:disabled { opacity:.45; cursor:not-allowed; }
+    .status { min-height:18px; margin:10px 2px 0; color:var(--green); font-size:12px; }
+    .privacy {
+      margin-top:18px; padding:14px; border-radius:15px; background:#f8f5fc; color:#625a6c;
+      font-size:12px; line-height:1.5;
+    }
+    .privacy strong { color:var(--ink); }
+    .modal {
+      position:fixed; inset:0; z-index:5; display:none; align-items:center; justify-content:center;
+      background:rgba(24, 18, 31, .86); padding:20px;
+    }
+    .modal.open { display:flex; }
+    .modal img { max-width:min(100%, 1100px); max-height:88vh; object-fit:contain; border-radius:12px; }
+    .modal-close {
+      position:absolute; top:16px; right:18px; width:42px; height:42px; border:0; border-radius:50%;
+      background:rgba(255,255,255,.16); color:white; font-size:24px; cursor:pointer;
+    }
+    .footnote { text-align:center; color:#898391; font-size:11px; margin-top:20px; }
+    @media (max-width:760px) {
+      .app { padding:19px 13px 30px; }
+      .dashboard { grid-template-columns:1fr 1fr; gap:10px; }
+      .stat { padding:15px; min-height:102px; }
+      .stat.primary { grid-column:1 / -1; }
+      .layout { grid-template-columns:1fr; gap:13px; }
+      .calendar-card, .side-card { padding:16px; }
+      .day { min-height:52px; margin:1px; border-radius:11px; }
+      .calendar-hint { line-height:1.45; }
+    }
+    @media (max-width:380px) {
+      .day { min-height:45px; }
+      .month-title { font-size:17px; }
+      .today-btn { padding:0 8px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">💜</div>
+        <div>
+          <h1>Nosso calendário</h1>
+          <p class="subtitle">Pequenas lembranças do ano — sempre na brincadeira.</p>
+        </div>
+      </div>
+      <div class="year-pill" id="yearPill"></div>
+    </header>
+
+    <section class="dashboard" aria-label="Resumo do ano">
+      <article class="stat primary">
+        <div class="stat-label">Dias “brava” até hoje</div>
+        <div class="stat-number" id="countUntilToday">0</div>
+        <div class="stat-note">Datas com foto neste ano, até hoje</div>
+      </article>
+      <article class="stat">
+        <div class="stat-label">Registros no ano</div>
+        <div class="stat-number" id="countYear">0</div>
+        <div class="stat-note">Inclui qualquer data do ano selecionado</div>
+      </article>
+      <article class="stat">
+        <div class="stat-label">Mês em foco</div>
+        <div class="stat-number" id="countMonth">0</div>
+        <div class="stat-note">Dias com foto neste mês</div>
+      </article>
+    </section>
+
+    <div class="layout">
+      <section class="card calendar-card" aria-label="Calendário">
+        <div class="calendar-head">
+          <div class="month-title" id="monthTitle"></div>
+          <div class="month-controls">
+            <button class="icon-btn" id="prevMonth" aria-label="Mês anterior">‹</button>
+            <button class="today-btn" id="goToday">Hoje</button>
+            <button class="icon-btn" id="nextMonth" aria-label="Próximo mês">›</button>
+          </div>
+        </div>
+        <div class="weekdays" aria-hidden="true">
+          <div class="weekday">SEG</div><div class="weekday">TER</div><div class="weekday">QUA</div>
+          <div class="weekday">QUI</div><div class="weekday">SEX</div><div class="weekday">SÁB</div><div class="weekday">DOM</div>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+        <p class="calendar-hint">Toque em uma data para ver ou adicionar o registro. Um pontinho indica que já há foto.</p>
+      </section>
+
+      <aside class="card side-card">
+        <h2 class="side-title">Registro do dia</h2>
+        <p class="selected-date" id="selectedDateLabel"></p>
+        <div class="preview empty" id="preview">
+          <div><div class="empty-icon">📷</div><div>Nenhuma foto nesta data</div></div>
+        </div>
+        <div class="actions">
+          <button class="action-btn primary" id="cameraButton">📸 Tirar foto</button>
+          <button class="action-btn secondary" id="galleryButton">🖼️ Escolher da galeria</button>
+          <button class="action-btn remove" id="removeButton" disabled>Remover foto</button>
+        </div>
+        <div class="status" id="status" role="status" aria-live="polite"></div>
+        <div class="privacy">
+          <strong>Privacidade:</strong> esta demonstração não envia fotos para a internet. Os registros ficam somente na memória desta aba e desaparecem ao fechá-la ou atualizar a página. Para guardar por mais tempo, use uma versão com conta privada e armazenamento protegido.
+        </div>
+      </aside>
+    </div>
+    <p class="footnote">Feito para guardar momentos com carinho e bom humor 😊</p>
+  </main>
+
+  <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden />
+  <input id="galleryInput" type="file" accept="image/*" hidden />
+
+  <div class="modal" id="imageModal" role="dialog" aria-modal="true" aria-label="Foto ampliada">
+    <button class="modal-close" id="modalClose" aria-label="Fechar">×</button>
+    <img id="modalImage" alt="Foto do registro ampliada" />
+  </div>
+
+  <script>
+    (() => {
+      // Os dados ficam apenas na memória desta página; nada é enviado nem persistido.
+      const registros = Object.create(null);
+      const now = new Date();
+      let viewYear = now.getFullYear();
+      let viewMonth = now.getMonth();
+      let selectedDate = formatDate(now);
+
+      const monthNames = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
+        "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+      const weekdays = ["segunda-feira", "terça-feira", "quarta-feira", "quinta-feira",
+        "sexta-feira", "sábado", "domingo"];
+
+      const $ = (id) => document.getElementById(id);
+      const grid = $("calendarGrid");
+      const preview = $("preview");
+      const cameraInput = $("cameraInput");
+      const galleryInput = $("galleryInput");
+
+      function formatDate(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      }
+
+      function dateFromKey(key) {
+        const [y, m, d] = key.split("-").map(Number);
+        return new Date(y, m - 1, d);
+      }
+
+      function renderCalendar() {
+        $("monthTitle").textContent = `${monthNames[viewMonth]} ${viewYear}`;
+        $("yearPill").textContent = `Ano ${viewYear}`;
+        grid.replaceChildren();
+
+        const first = new Date(viewYear, viewMonth, 1);
+        const mondayOffset = (first.getDay() + 6) % 7;
+        const start = new Date(viewYear, viewMonth, 1 - mondayOffset);
+
+        for (let i = 0; i < 42; i++) {
+          const date = new Date(start);
+          date.setDate(start.getDate() + i);
+          const key = formatDate(date);
+          const inMonth = date.getMonth() === viewMonth;
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "day" + (inMonth ? "" : " outside") +
+            (key === selectedDate ? " selected" : "") +
+            (key === formatDate(now) ? " today" : "");
+          button.setAttribute("aria-label", `${weekdays[(date.getDay() + 6) % 7]}, ${date.getDate()} ${monthNames[date.getMonth()]}${registros[key] ? ", foto registrada" : ""}`);
+          const number = document.createElement("span");
+          number.className = "day-number";
+          number.textContent = date.getDate();
+          button.appendChild(number);
+          if (registros[key]) {
+            const dot = document.createElement("span");
+            dot.className = "day-photo";
+            dot.setAttribute("aria-hidden", "true");
+            button.appendChild(dot);
+          }
+          button.addEventListener("click", () => {
+            selectedDate = key;
+            viewYear = date.getFullYear();
+            viewMonth = date.getMonth();
+            render();
+          });
+          grid.appendChild(button);
+        }
+        renderCounts();
+      }
+
+      function renderCounts() {
+        const keys = Object.keys(registros).filter(key => Number(key.slice(0, 4)) === viewYear);
+        const todayKey = formatDate(now);
+        $("countYear").textContent = keys.length;
+        $("countUntilToday").textContent = keys.filter(key => key <= todayKey).length;
+        $("countMonth").textContent = keys.filter(key => Number(key.slice(5, 7)) === viewMonth + 1).length;
+      }
+
+      function renderDetail() {
+        const date = dateFromKey(selectedDate);
+        $("selectedDateLabel").textContent =
+          `${weekdays[(date.getDay() + 6) % 7]}, ${date.getDate()} de ${monthNames[date.getMonth()]} de ${date.getFullYear()}`;
+
+        const record = registros[selectedDate];
+        preview.replaceChildren();
+        preview.classList.toggle("empty", !record);
+
+        if (record) {
+          const img = document.createElement("img");
+          img.src = record;
+          img.alt = `Foto do dia ${date.getDate()} de ${monthNames[date.getMonth()]}`;
+          img.title = "Toque para ampliar";
+          img.addEventListener("click", openModal);
+          preview.appendChild(img);
+        } else {
+          const empty = document.createElement("div");
+          const icon = document.createElement("div");
+          icon.className = "empty-icon";
+          icon.textContent = "📷";
+          const text = document.createElement("div");
+          text.textContent = "Nenhuma foto nesta data";
+          empty.append(icon, text);
+          preview.appendChild(empty);
+        }
+        $("removeButton").disabled = !record;
+      }
+
+      function render() {
+        renderCalendar();
+        renderDetail();
+        $("status").textContent = "";
+      }
+
+      function openModal() {
+        const record = registros[selectedDate];
+        if (!record) return;
+        $("modalImage").src = record;
+        $("imageModal").classList.add("open");
+      }
+
+      function closeModal() {
+        $("imageModal").classList.remove("open");
+        $("modalImage").removeAttribute("src");
+      }
+
+      async function processFile(file) {
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+          $("status").textContent = "Escolha um arquivo de imagem.";
+          return;
+        }
+
+        $("status").textContent = "Preparando a foto…";
+        try {
+          const image = new Image();
+          const objectUrl = URL.createObjectURL(file);
+          image.src = objectUrl;
+          await new Promise((resolve, reject) => {
+            image.onload = resolve;
+            image.onerror = reject;
+          });
+
+          const maxSide = 1600;
+          const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+          canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+          const context = canvas.getContext("2d");
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(objectUrl);
+
+          const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.82));
+          if (!blob) throw new Error("Não foi possível preparar a imagem.");
+          const reader = new FileReader();
+          const dataUrl = await new Promise((resolve, reject) => {
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+
+          registros[selectedDate] = dataUrl;
+          render();
+          $("status").textContent = "Foto registrada para esta data.";
+        } catch (error) {
+          $("status").textContent = "Não foi possível carregar essa foto. Tente outra imagem.";
+        }
+      }
+
+      $("prevMonth").addEventListener("click", () => {
+        const date = new Date(viewYear, viewMonth - 1, 1);
+        viewYear = date.getFullYear();
+        viewMonth = date.getMonth();
+        render();
+      });
+      $("nextMonth").addEventListener("click", () => {
+        const date = new Date(viewYear, viewMonth + 1, 1);
+        viewYear = date.getFullYear();
+        viewMonth = date.getMonth();
+        render();
+      });
+      $("goToday").addEventListener("click", () => {
+        viewYear = now.getFullYear();
+        viewMonth = now.getMonth();
+        selectedDate = formatDate(now);
+        render();
+      });
+      $("cameraButton").addEventListener("click", () => cameraInput.click());
+      $("galleryButton").addEventListener("click", () => galleryInput.click());
+      cameraInput.addEventListener("change", async (event) => {
+        await processFile(event.target.files[0]);
+        event.target.value = "";
+      });
+      galleryInput.addEventListener("change", async (event) => {
+        await processFile(event.target.files[0]);
+        event.target.value = "";
+      });
+      $("removeButton").addEventListener("click", () => {
+        if (!registros[selectedDate]) return;
+        delete registros[selectedDate];
+        render();
+        $("status").textContent = "Foto removida deste dia.";
+      });
+      $("modalClose").addEventListener("click", closeModal);
+      $("imageModal").addEventListener("click", (event) => {
+        if (event.target === $("imageModal")) closeModal();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeModal();
+      });
+
+      render();
+    })();
+  </script>
+</body>
+</html>
